@@ -21,6 +21,8 @@ dependencies = [
     "lxml>=5.0.0",
     "openai>=1.60.0",
     "zhipuai>=2.0.0",
+    "yfinance>=0.2.50",
+    "pandas>=2.2.0",
 ]
 
 [project.optional-dependencies]
