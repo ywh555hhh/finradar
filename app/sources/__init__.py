@@ -1,12 +1,6 @@
-from .financial_sources import SECSource, YahooFinanceSource, AlphaVantageSource
-from .startup_sources import CrunchbaseSource, TechCrunchSource, ProductHuntSource, GitHubTrendingSource
+# Sources module - China-focused
+from .china_sources import ChinaStartupAggregator
 
 __all__ = [
-    "SECSource",
-    "YahooFinanceSource",
-    "AlphaVantageSource",
-    "CrunchbaseSource",
-    "TechCrunchSource",
-    "ProductHuntSource",
-    "GitHubTrendingSource",
+    "ChinaStartupAggregator",
 ]
