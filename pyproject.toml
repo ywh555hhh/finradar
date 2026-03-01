@@ -23,6 +23,7 @@ dependencies = [
     "zhipuai>=2.0.0",
     "yfinance>=0.2.50",
     "pandas>=2.2.0",
+    "feedparser>=6.0.0",
 ]
 
 [project.optional-dependencies]
