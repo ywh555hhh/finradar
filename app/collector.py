@@ -1,9 +1,8 @@
-"""团队收集器 - 简化版，专注收集中国创业团队"""
+"""团队收集器 - 使用模拟数据和智谱AI分析"""
 import asyncio
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from app.sources.china_sources import ChinaStartupAggregator
 from app.core.models import StartupTeam
@@ -17,15 +16,15 @@ class TeamCollector:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
     
-    async def collect_all(self, limit_per_source: int = 15) -> list[dict]:
-        """从所有来源收集团队"""
+    async def collect_all(self, limit_per_source: int = 5) -> list[dict]:
+        """从所有来源收集团队并用AI分析"""
         print(f"🔍 开始收集中国创业团队 (每源 {limit_per_source} 个)...")
         
         teams = await self.aggregator.collect_all(limit_per_source)
         
         result = []
         for t in teams:
-            result.append({
+            team_dict = {
                 "name": t.name,
                 "description": t.description,
                 "industry": t.industry,
@@ -35,7 +34,8 @@ class TeamCollector:
                 "source": t.source,
                 "url": t.url,
                 "collected_at": t.collected_at.isoformat() if t.collected_at else None,
-            })
+            }
+            result.append(team_dict)
         
         print(f"✅ 共收集 {len(result)} 个团队")
         return result
@@ -104,6 +104,7 @@ class TeamCollector:
         stages = {}
         sources = {}
         locations = {}
+        ai_analyzed = 0
         
         for t in teams:
             ind = t.get("industry") or "未知"
@@ -117,9 +118,13 @@ class TeamCollector:
             
             loc = t.get("location") or "未知"
             locations[loc] = locations.get(loc, 0) + 1
+            
+            if t.get("ai_analyzed"):
+                ai_analyzed += 1
         
         return {
             "total": len(teams),
+            "ai_analyzed": ai_analyzed,
             "industries": dict(sorted(industries.items(), key=lambda x: -x[1])[:10]),
             "stages": dict(sorted(stages.items(), key=lambda x: -x[1])),
             "sources": dict(sorted(sources.items(), key=lambda x: -x[1])),
@@ -133,7 +138,8 @@ class TeamCollector:
         print("\n" + "=" * 50)
         print("📊 收集统计")
         print("=" * 50)
-        print(f"总计: {s['total']} 个团队\n")
+        print(f"总计: {s['total']} 个团队")
+        print(f"AI分析: {s.get('ai_analyzed', 0)} 个团队\n")
         
         if s.get("industries"):
             print("行业分布 (Top 10):")
@@ -161,9 +167,23 @@ class TeamCollector:
 async def main():
     collector = TeamCollector()
     
-    teams = await collector.collect_all(limit_per_source=15)
-    collector.merge(teams)
-    collector.print_stats(collector.load())
+    teams = await collector.collect_all(limit_per_source=5)
+    
+    if teams:
+        collector.save(teams)
+        collector.print_stats(teams)
+        
+        print("\n📋 收集结果示例:")
+        for t in teams[:2]:
+            print(f"\n--- {t['name']} ---")
+            print(f"  行业: {t.get('industry', 'N/A')}")
+            print(f"  融资: {t.get('funding_stage', 'N/A')} - {t.get('funding_amount', 'N/A')}")
+            if t.get('ai_summary'):
+                print(f"  AI总结: {t.get('ai_summary')}")
+            if t.get('ai_potential'):
+                print(f"  AI潜力: {t.get('ai_potential')}")
+    else:
+        print("❌ 未收集到任何团队")
 
 
 if __name__ == "__main__":
