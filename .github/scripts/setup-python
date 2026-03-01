@@ -1,0 +1,17 @@
+name: Setup Python
+description: Setup Python environment
+inputs:
+  python-version:
+    description: Python version
+    required: true
+    default: "3.11"
+runs:
+  using: actions/setup-python@v5
+  with:
+    python-version: ${{ inputs.python-version }}
+    cache: 'pip'
+    cache-dependency-path: requirements.txt
+- name: Install dependencies
+  run: pip install -e .
+- name: Verify installation
+  run: python -c "import app; print('OK')"

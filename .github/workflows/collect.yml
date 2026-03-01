@@ -1,0 +1,51 @@
+name: Team Stats
+on:
+  schedule:
+    - cron: '0 2 * * 6'
+    workflow_dispatch:
+      inputs:
+        industries:
+          description: 'Comma-separated industries (e.g., AI,SaaS,Fintech)'
+          required: false
+          default: 'AI'
+        stages:
+          description: 'Comma-separated funding stages (e.g., 天使轮,A轮,B轮)'
+          required: false
+          default: '天使轮,A轮,B轮'
+        limit:
+          description: 'Maximum teams to collect'
+          required: false
+          default: '50'
+
+jobs:
+  collect:
+    name: Collect China Startups
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -e .
+      
+      - name: Run collector
+        env:
+          INDUSTRIES: ${{ github.event.inputs.industries }}
+          STAGES: ${{ github.event.inputs.stages }}
+          LIMIT: ${{ github.event.inputs.limit }}
+        run: python -m app.collector.main --industries "$INDUSTRIES" --stages "$STAGES" --limit $LIMIT
+      
+      - name: Save results
+        run: python -m app.collector.save_results
+      
+      - name: Create issue on        if: failure()
+        run: python -m app.collector.create_issue
+      
+      - name: Print summary
+        run: cat summary.md
+
+    outputs:
+      total-teams:
+        description: 'Total teams collected'
+        value: ${{ steps.collect.outputs.total }}
