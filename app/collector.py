@@ -9,15 +9,12 @@ from app.core.models import StartupTeam
 
 
 class TeamCollector:
-    """创业团队收集器"""
-    
     def __init__(self, output_dir: str = "data"):
         self.aggregator = ChinaStartupAggregator()
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
     
     async def collect_all(self, limit_per_source: int = 5) -> list[dict]:
-        """从所有来源收集团队并用AI分析"""
         print(f"🔍 开始收集中国创业团队 (每源 {limit_per_source} 个)...")
         
         teams = await self.aggregator.collect_all(limit_per_source)
@@ -25,15 +22,15 @@ class TeamCollector:
         result = []
         for t in teams:
             team_dict = {
-                "name": t.name,
+                "name": t.company_name,
                 "description": t.description,
                 "industry": t.industry,
                 "funding_stage": t.funding_stage.value,
-                "funding_amount": t.funding_amount,
+                "funding_amount": t.last_funding_round,
                 "location": t.location,
-                "source": t.source,
-                "url": t.url,
-                "collected_at": t.collected_at.isoformat() if t.collected_at else None,
+                "sources": t.sources,
+                "website": t.website,
+                "discovered_at": t.discovered_at.isoformat() if t.discovered_at else None,
             }
             result.append(team_dict)
         
@@ -41,7 +38,6 @@ class TeamCollector:
         return result
     
     async def search(self, query: str, limit: int = 20) -> list[dict]:
-        """搜索团队"""
         print(f"🔍 搜索: {query}")
         
         teams = await self.aggregator.search(query, limit)
@@ -49,22 +45,21 @@ class TeamCollector:
         result = []
         for t in teams:
             result.append({
-                "name": t.name,
+                "name": t.company_name,
                 "description": t.description,
                 "industry": t.industry,
                 "funding_stage": t.funding_stage.value,
-                "funding_amount": t.funding_amount,
+                "funding_amount": t.last_funding_round,
                 "location": t.location,
-                "source": t.source,
-                "url": t.url,
-                "collected_at": t.collected_at.isoformat() if t.collected_at else None,
+                "sources": t.sources,
+                "website": t.website,
+                "discovered_at": t.discovered_at.isoformat() if t.discovered_at else None,
             })
         
         print(f"✅ 找到 {len(result)} 个相关团队")
         return result
     
     def save(self, teams: list[dict], filename: str = "collected_teams.json") -> Path:
-        """保存到JSON文件"""
         filepath = self.output_dir / filename
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(teams, f, ensure_ascii=False, indent=2)
@@ -72,7 +67,6 @@ class TeamCollector:
         return filepath
     
     def load(self, filename: str = "collected_teams.json") -> list[dict]:
-        """加载已收集的团队"""
         filepath = self.output_dir / filename
         if not filepath.exists():
             return []
@@ -80,7 +74,6 @@ class TeamCollector:
             return json.load(f)
     
     def merge(self, new_teams: list[dict], filename: str = "collected_teams.json") -> list[dict]:
-        """合并新旧数据，去重"""
         existing = self.load(filename)
         existing_names = {t["name"] for t in existing}
         
@@ -96,7 +89,6 @@ class TeamCollector:
         return existing
     
     def stats(self, teams: list[dict]) -> dict:
-        """统计信息"""
         if not teams:
             return {"total": 0}
         
@@ -113,8 +105,9 @@ class TeamCollector:
             stage = t.get("funding_stage") or "未知"
             stages[stage] = stages.get(stage, 0) + 1
             
-            source = t.get("source") or "未知"
-            sources[source] = sources.get(source, 0) + 1
+            src_list = t.get("sources", [])
+            for src in src_list:
+                sources[src] = sources.get(src, 0) + 1
             
             loc = t.get("location") or "未知"
             locations[loc] = locations.get(loc, 0) + 1
@@ -132,7 +125,6 @@ class TeamCollector:
         }
     
     def print_stats(self, teams: list[dict]):
-        """打印统计"""
         s = self.stats(teams)
         
         print("\n" + "=" * 50)
@@ -174,10 +166,11 @@ async def main():
         collector.print_stats(teams)
         
         print("\n📋 收集结果示例:")
-        for t in teams[:2]:
+        for t in teams[:3]:
             print(f"\n--- {t['name']} ---")
             print(f"  行业: {t.get('industry', 'N/A')}")
             print(f"  融资: {t.get('funding_stage', 'N/A')} - {t.get('funding_amount', 'N/A')}")
+            print(f"  地点: {t.get('location', 'N/A')}")
             if t.get('ai_summary'):
                 print(f"  AI总结: {t.get('ai_summary')}")
             if t.get('ai_potential'):
